@@ -80,12 +80,13 @@ def delete_repo_docs(repo_name: str) -> None:
         store._collection.delete(ids=ids)
 
 
-def index_documents(docs: List[Document]) -> int:
+def index_documents(docs: List[Document], batch_size: int = 5000) -> int:
     """Add documents to the vector store. Returns count added."""
     if not docs:
         return 0
     store = get_vector_store()
-    store.add_documents(docs)
+    for i in range(0, len(docs), batch_size):
+        store.add_documents(docs[i:i + batch_size])
     return len(docs)
 
 
