@@ -1,48 +1,48 @@
-# Installation Guide
+# Guía de instalación
 
-## Requirements
+## Requisitos
 
-- Python 3.10 or higher
-- macOS, Linux, or Windows (WSL recommended on Windows)
-- ~2 GB disk space for the LLM model
-- Internet connection for first run (to download embedding model and LLM)
+- Python 3.10 o superior
+- macOS, Linux, o Windows (se recomienda WSL en Windows)
+- ~2 GB de espacio en disco para el modelo LLM
+- Conexión a internet en la primera ejecución (para descargar el modelo de embeddings y el LLM)
 
 ---
 
-## Step 1 — Accounts and tokens
+## Paso 1 — Cuentas y tokens
 
-### HuggingFace (required)
+### HuggingFace (requerido)
 
-The embedding model (`all-MiniLM-L6-v2`) is downloaded from HuggingFace on first run. You need an account and an access token.
+El modelo de embeddings (`all-MiniLM-L6-v2`) se descarga desde HuggingFace en la primera ejecución. Se necesita una cuenta y un access token.
 
-1. Create a free account at [huggingface.co](https://huggingface.co/join)
-2. Go to **Settings → Access Tokens** ([huggingface.co/settings/tokens](https://huggingface.co/settings/tokens))
-3. Click **New token** → choose **Read** role → copy the token (starts with `hf_`)
-4. Add it to your `.env` file:
+1. Crea una cuenta gratuita en [huggingface.co](https://huggingface.co/join)
+2. Ve a **Settings → Access Tokens** ([huggingface.co/settings/tokens](https://huggingface.co/settings/tokens))
+3. Haz clic en **New token** → elige el rol **Read** → copia el token (empieza con `hf_`)
+4. Agrégalo a tu archivo `.env`:
    ```
    HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxx
    ```
 
-> Without this token, downloads still work but are rate-limited and slower. You may see a warning: `"You are sending unauthenticated requests to the HF Hub"` — this is harmless but not ideal.
+> Sin este token las descargas funcionan igual pero con límite de velocidad. Puedes ver el mensaje: `"You are sending unauthenticated requests to the HF Hub"` — no es un error, pero es mejor tener el token configurado.
 
-### GitHub (optional — only for private repos)
+### GitHub (opcional — solo para repos privados)
 
-If you want to index private repositories:
+Si quieres indexar repositorios privados:
 
-1. Go to **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**
-2. Create a token with **Contents: Read** permission for the repos you need
-3. Add it to your `.env` file:
+1. Ve a **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**
+2. Crea un token con permiso **Contents: Read** para los repos que necesitas
+3. Agrégalo a tu archivo `.env`:
    ```
    GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
    ```
 
-Public repos work without any token.
+Los repos públicos funcionan sin ningún token.
 
 ---
 
-## Step 2 — Install Ollama
+## Paso 2 — Instalar Ollama
 
-Ollama runs the LLM locally on your machine.
+Ollama ejecuta el LLM localmente en tu máquina.
 
 **macOS / Linux:**
 ```bash
@@ -54,105 +54,105 @@ curl -fsSL https://ollama.com/install.sh | sh
 brew install ollama
 ```
 
-**Windows:** Download the installer from [ollama.com](https://ollama.com/download)
+**Windows:** Descarga el instalador desde [ollama.com](https://ollama.com/download)
 
-After installing, start the Ollama server:
+Luego inicia el servidor de Ollama:
 ```bash
 ollama serve
 ```
 
-Then download the default LLM (this is a ~2 GB download, do it once):
+Descarga el modelo LLM por defecto (descarga única, ~2 GB):
 ```bash
 ollama pull llama3.2
 ```
 
-Verify it works:
+Verifica que funciona:
 ```bash
 ollama list
 ```
 
-You should see `llama3.2` in the list.
+Deberías ver `llama3.2` en la lista.
 
-> Ollama must be running (`ollama serve`) every time you use repo-guide. On macOS, the desktop app starts it automatically.
+> Ollama debe estar corriendo (`ollama serve`) cada vez que uses repo-guide. En macOS, la app de escritorio lo inicia automáticamente.
 
 ---
 
-## Step 3 — Clone and set up the project
+## Paso 3 — Clonar y configurar el proyecto
 
 ```bash
 git clone https://github.com/MedardoTejada/codebase-ai.git
 cd codebase-ai
 ```
 
-Create and activate a virtual environment:
+Crea y activa un entorno virtual:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate        # macOS / Linux
 # .venv\Scripts\activate         # Windows
 ```
 
-Install dependencies:
+Instala las dependencias:
 ```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-## Step 4 — Configure environment
+## Paso 4 — Configurar el entorno
 
-Copy the example env file:
+Copia el archivo de ejemplo:
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and fill in your tokens:
+Edita `.env` y completa tus tokens:
 ```env
-HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxx       # Required — HuggingFace token
-GITHUB_TOKEN=                          # Optional — only for private repos
-OLLAMA_BASE_URL=http://localhost:11434  # Default, change if Ollama runs elsewhere
-OLLAMA_MODEL=llama3.2                  # Default model, can use llama3.1, mistral, etc.
+HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxx        # Requerido — token de HuggingFace
+GITHUB_TOKEN=                           # Opcional — solo para repos privados
+OLLAMA_BASE_URL=http://localhost:11434   # Por defecto, cambiar si Ollama corre en otro lugar
+OLLAMA_MODEL=llama3.2                   # Modelo por defecto, puedes usar llama3.1, mistral, etc.
 ```
 
 ---
 
-## Step 5 — First run
+## Paso 5 — Primera ejecución
 
-The first time you index a repo, two things will be downloaded automatically:
+La primera vez que indexas un repo se descargan dos cosas automáticamente:
 
-1. **HuggingFace embedding model** (`all-MiniLM-L6-v2`, ~90 MB) — downloaded once, cached in `~/.cache/huggingface/`
-2. **ChromaDB ONNX runtime** (~79 MB) — downloaded once, cached in `~/.cache/chroma/`
+1. **Modelo de embeddings de HuggingFace** (`all-MiniLM-L6-v2`, ~90 MB) — descarga única, queda en caché en `~/.cache/huggingface/`
+2. **ONNX runtime de ChromaDB** (~79 MB) — descarga única, queda en caché en `~/.cache/chroma/`
 
-This only happens on the first run. Subsequent runs are fast.
+Esto solo ocurre en la primera ejecución. Las siguientes son rápidas.
 
 ```bash
-python main.py index https://github.com/some/repo
+python main.py index https://github.com/algún/repo
 ```
 
 ---
 
-## Dependency overview
+## Resumen de dependencias
 
-| Package | Purpose |
+| Paquete | Propósito |
 |---|---|
-| `langchain`, `langchain-core`, `langchain-text-splitters` | RAG chain orchestration and text splitting |
-| `langchain-chroma` | ChromaDB integration for LangChain |
-| `langchain-huggingface` | HuggingFace embeddings integration |
-| `langchain-ollama` | Ollama LLM integration |
-| `chromadb` | Local vector database |
-| `sentence-transformers` | Loads and runs the embedding model locally |
-| `gitpython` | Clones GitHub repositories |
-| `python-dotenv` | Loads `.env` configuration |
+| `langchain`, `langchain-core`, `langchain-text-splitters` | Orquestación del RAG chain y división de texto |
+| `langchain-chroma` | Integración de ChromaDB con LangChain |
+| `langchain-huggingface` | Integración de embeddings de HuggingFace |
+| `langchain-ollama` | Integración del LLM de Ollama |
+| `chromadb` | Base de datos vectorial local |
+| `sentence-transformers` | Carga y ejecuta el modelo de embeddings localmente |
+| `gitpython` | Clona repositorios de GitHub |
+| `python-dotenv` | Carga la configuración desde `.env` |
 
 ---
 
-## Troubleshooting
+## Solución de problemas
 
-**`ModuleNotFoundError`** — Make sure your virtual environment is activated: `source .venv/bin/activate`
+**`ModuleNotFoundError`** — Asegúrate de que el entorno virtual esté activado: `source .venv/bin/activate`
 
-**`Connection refused` when asking questions** — Ollama is not running. Start it with `ollama serve`.
+**`Connection refused` al hacer preguntas** — Ollama no está corriendo. Inícialo con `ollama serve`.
 
-**`Permission denied (publickey)` on git push** — Your SSH key is not added to GitHub. See [GitHub SSH docs](https://docs.github.com/en/authentication/connecting-to-github-with-ssh).
+**`Permission denied (publickey)` al hacer git push** — Tu clave SSH no está agregada a GitHub. Ver [documentación SSH de GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh).
 
-**HuggingFace rate limit warning** — Add your `HF_TOKEN` to `.env` as described in Step 1.
+**Advertencia de rate limit de HuggingFace** — Agrega tu `HF_TOKEN` al `.env` como se describe en el Paso 1.
 
-**Clone timeout on large repos** — The default timeout is 30 seconds. For large repos, run the clone manually first or increase `CLONE_TIMEOUT` in `config.py`.
+**Timeout al clonar repos grandes** — El timeout por defecto es 30 segundos. Para repos grandes, clona manualmente primero o aumenta `CLONE_TIMEOUT` en `config.py`.

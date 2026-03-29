@@ -1,107 +1,107 @@
-# Architecture
+# Arquitectura
 
-## Overview
+## Visión general
 
-repo-guide is a RAG (Retrieval-Augmented Generation) agent that lets you index any GitHub repository and ask questions about it in natural language. The system clones the repo, splits the code into chunks, converts them into vector embeddings, stores them locally, and uses an LLM to answer questions based on retrieved context.
+repo-guide es un agente RAG (Retrieval-Augmented Generation) que permite indexar cualquier repositorio de GitHub y hacer preguntas sobre él en lenguaje natural. El sistema clona el repositorio, divide el código en fragmentos, los convierte en vectores de embeddings, los almacena localmente, y usa un LLM para responder preguntas basadas en el contexto recuperado.
 
 ```
 GitHub URL
     │
     ▼
 ┌─────────────┐
-│   Cloner    │  GitPython — clones repo to disk (data/repos/)
+│   Cloner    │  GitPython — clona el repo a disco (data/repos/)
 └──────┬──────┘
        │
-    ▼
+       ▼
 ┌─────────────┐
 │   Parser    │  LangChain RecursiveCharacterTextSplitter
-│             │  Reads supported files → splits into chunks (1000 chars, 200 overlap)
+│             │  Lee archivos soportados → divide en chunks (1000 chars, 200 overlap)
 └──────┬──────┘
        │
-    ▼
+       ▼
 ┌─────────────┐
-│  Embedder   │  HuggingFace all-MiniLM-L6-v2 (runs locally on CPU)
-│             │  Converts each chunk into a 384-dimension vector
+│  Embedder   │  HuggingFace all-MiniLM-L6-v2 (corre localmente en CPU)
+│             │  Convierte cada chunk en un vector de 384 dimensiones
 └──────┬──────┘
        │
-    ▼
+       ▼
 ┌─────────────┐
-│  ChromaDB   │  Persistent local vector store (data/chroma/)
-│             │  Stores vectors + metadata (repo, file path, extension)
+│  ChromaDB   │  Vector store local persistente (data/chroma/)
+│             │  Almacena vectores + metadata (repo, ruta de archivo, extensión)
 └──────┬──────┘
        │
-    ▼  (at query time)
+       ▼  (al momento de consultar)
 ┌─────────────┐
-│  Retriever  │  Similarity search — returns top-6 most relevant chunks
+│  Retriever  │  Similarity search — retorna los 6 chunks más relevantes
 └──────┬──────┘
        │
-    ▼
+       ▼
 ┌─────────────┐
-│  LLM Chain  │  LangChain + Ollama (llama3.2 by default, runs locally)
-│             │  Prompt includes context + source citations
+│  LLM Chain  │  LangChain + Ollama (llama3.2 por defecto, corre localmente)
+│             │  El prompt incluye el contexto recuperado y las citas de fuente
 └─────────────┘
 ```
 
 ---
 
-## Components
+## Componentes
 
 ### `indexer/cloner.py`
-Clones a GitHub repo using GitPython. Supports private repos via `GITHUB_TOKEN` injected into the HTTPS URL. Has a 30-second timeout using UNIX signals. If the repo was already cloned, it deletes and re-clones (full reindex).
+Clona un repositorio de GitHub usando GitPython. Soporta repos privados mediante `GITHUB_TOKEN` inyectado en la URL HTTPS. Tiene un timeout de 30 segundos usando señales UNIX. Si el repo ya estaba clonado, lo elimina y vuelve a clonar (reindexado completo).
 
 ### `indexer/parser.py`
-Walks the cloned directory recursively. Skips hidden directories (`.git`, `.github`), `node_modules`, and unsupported file types. Splits each file with `RecursiveCharacterTextSplitter` (chunk size: 1000, overlap: 200). Each chunk carries metadata: `repo_url`, `repo_name`, `file_path`, `extension`.
+Recorre el directorio clonado de forma recursiva. Omite directorios ocultos (`.git`, `.github`), `node_modules`, y tipos de archivo no soportados. Divide cada archivo con `RecursiveCharacterTextSplitter` (chunk size: 1000, overlap: 200). Cada chunk lleva metadata: `repo_url`, `repo_name`, `file_path`, `extension`.
 
 ### `indexer/embedder.py`
-Loads `sentence-transformers/all-MiniLM-L6-v2` from HuggingFace and runs it on CPU. The model is cached after the first load. Embeddings are normalized (unit vectors), which improves cosine similarity quality.
+Carga `sentence-transformers/all-MiniLM-L6-v2` desde HuggingFace y lo ejecuta en CPU. El modelo queda en caché después de la primera carga. Los embeddings están normalizados (vectores unitarios), lo que mejora la calidad de la similitud coseno.
 
 ### `store/vector_store.py`
-Wraps ChromaDB via `langchain_chroma`. Documents are upserted in batches of 5000 (ChromaDB max batch: 5461). Also maintains a separate `repo_guide_meta` collection with per-repo metadata (URL, indexed_at timestamp, file count).
+Envuelve ChromaDB mediante `langchain_chroma`. Los documentos se insertan en lotes de 5000 (límite máximo de ChromaDB: 5461). También mantiene una colección separada `repo_guide_meta` con metadata por repositorio (URL, timestamp de indexado, cantidad de archivos).
 
 ### `agent/retriever.py`
-Runs a similarity search against ChromaDB and formats the top-6 results into a numbered context string with `[repo_name → file_path]` citations.
+Ejecuta una búsqueda por similitud contra ChromaDB y formatea los 6 resultados más relevantes en un string de contexto numerado con citas `[repo_name → file_path]`.
 
 ### `agent/chain.py`
-Builds a LangChain LCEL chain: context + question → PromptTemplate → OllamaLLM → StrOutputParser. The prompt instructs the LLM to answer only from the provided context and always cite sources.
+Construye una chain LCEL de LangChain: contexto + pregunta → PromptTemplate → OllamaLLM → StrOutputParser. El prompt instruye al LLM a responder solo desde el contexto provisto y siempre citar las fuentes.
 
 ---
 
-## Tools & libraries
+## Herramientas y librerías
 
-| Component | Tool | Why |
+| Componente | Herramienta | Por qué |
 |---|---|---|
-| Orchestration | LangChain (LCEL) | Chain composition, splitters, document model |
-| Embeddings | HuggingFace `all-MiniLM-L6-v2` | Free, runs locally, fast on CPU, good quality for code |
-| Vector store | ChromaDB | Local persistence, no server needed, easy metadata filtering |
-| LLM | Ollama (llama3.2) | Runs fully locally, no API cost, easy model swapping |
-| Repo cloning | GitPython | Pure Python, supports token injection for private repos |
-| Config | python-dotenv | Simple `.env` override pattern |
+| Orquestación | LangChain (LCEL) | Composición de chains, splitters, modelo de documentos |
+| Embeddings | HuggingFace `all-MiniLM-L6-v2` | Gratuito, corre localmente, rápido en CPU, buena calidad para código |
+| Vector store | ChromaDB | Persistencia local, no requiere servidor, filtrado por metadata |
+| LLM | Ollama (llama3.2) | Corre completamente local, sin costo de API, fácil de cambiar de modelo |
+| Clonado de repos | GitPython | Python puro, soporta inyección de token para repos privados |
+| Configuración | python-dotenv | Patrón simple de override con `.env` |
 
 ---
 
-## Potential improvements
+## Posibles mejoras
 
 ### LLM
-The current setup uses `llama3.2` via Ollama, which runs locally on CPU/GPU. This works well for experimentation but has limitations:
+El setup actual usa `llama3.2` via Ollama, que corre localmente en CPU/GPU. Funciona bien para experimentar pero tiene limitaciones:
 
-- **Better local models**: `llama3.1:8b`, `mistral`, `codellama` (specialized for code), `deepseek-coder` are stronger alternatives for code understanding.
-- **Cloud LLMs**: Replace Ollama with `langchain_openai` (GPT-4o) or `langchain_anthropic` (Claude) for significantly better reasoning and longer context windows. Only requires changing `agent/chain.py` and adding an API key.
-- **Larger context**: Current LLMs have limited context windows. Switching to models with 128k+ context (GPT-4o, Claude 3.5) would allow passing more retrieved chunks.
+- **Mejores modelos locales**: `llama3.1:8b`, `mistral`, `codellama` (especializado en código), `deepseek-coder` son alternativas más potentes para entender código.
+- **LLMs en la nube**: Reemplazar Ollama con `langchain_openai` (GPT-4o) o `langchain_anthropic` (Claude) da un razonamiento significativamente mejor y context windows más grandes. Solo requiere cambiar `agent/chain.py` y agregar una API key.
+- **Context window más grande**: Los LLMs actuales tienen context windows limitados. Cambiar a modelos con 128k+ tokens (GPT-4o, Claude 3.5) permitiría pasar más chunks recuperados.
 
 ### Embeddings
-- `all-MiniLM-L6-v2` is fast and lightweight but was not trained specifically on code.
-- **Better alternative**: `microsoft/codebert-base` or `nomic-ai/nomic-embed-text-v1.5` produce higher-quality embeddings for source code and would improve retrieval relevance.
-- **OpenAI embeddings**: `text-embedding-3-small` outperforms local models in most benchmarks at low cost.
+- `all-MiniLM-L6-v2` es rápido y liviano pero no fue entrenado específicamente en código.
+- **Mejor alternativa**: `microsoft/codebert-base` o `nomic-ai/nomic-embed-text-v1.5` producen embeddings de mayor calidad para código fuente y mejorarían la relevancia del retrieval.
+- **OpenAI embeddings**: `text-embedding-3-small` supera a los modelos locales en la mayoría de benchmarks a bajo costo.
 
 ### Retrieval
-- Currently does flat similarity search (top-6 chunks). For large repos this can miss context.
-- **Improvements**: hybrid search (BM25 + vector), reranking with a cross-encoder model, or increasing `k` and filtering by file type.
-- **Multi-repo search**: Currently searches across all indexed repos. Adding a `--repo` filter flag would improve precision.
+- Actualmente hace búsqueda plana por similitud (top-6 chunks). En repos grandes esto puede perder contexto relevante.
+- **Mejoras posibles**: búsqueda híbrida (BM25 + vector), reranking con un modelo cross-encoder, o aumentar `k` y filtrar por tipo de archivo.
+- **Búsqueda por repo específico**: Actualmente busca en todos los repos indexados. Agregar un flag `--repo` mejoraría la precisión.
 
-### Indexing
-- No incremental indexing: every `index` call does a full re-clone and re-embed.
-- **Improvement**: track file hashes and only re-embed changed files.
-- The 30-second clone timeout is too short for large repos (TheAlgorithms/Python took several minutes). This should be configurable or removed for large repos.
+### Indexado
+- No hay indexado incremental: cada llamada a `index` hace un re-clonado y re-embedding completo.
+- **Mejora posible**: rastrear hashes de archivos y solo re-embeddear los archivos modificados.
+- El timeout de 30 segundos para el clonado es muy corto para repos grandes. Debería ser configurable o eliminarse para repos de gran tamaño.
 
-### Interface
-- Currently CLI only. A simple web UI (FastAPI + minimal frontend) or a chat interface (Gradio, Streamlit) would make it more accessible.
+### Interfaz
+- Actualmente solo CLI. Una interfaz web simple (FastAPI + frontend minimalista) o un chat (Gradio, Streamlit) lo haría más accesible.

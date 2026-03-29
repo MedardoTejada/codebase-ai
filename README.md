@@ -1,108 +1,108 @@
 # repo-guide
 
-RAG agent for codebase onboarding. Clone and index any GitHub repository, then ask questions about it in natural language. Answers cite the source file and repo.
+Agente RAG para onboarding de codebases. Clona e indexa cualquier repositorio de GitHub y permite hacer preguntas sobre él en lenguaje natural. Las respuestas citan el archivo fuente y el repositorio.
 
-## How it works
+## Cómo funciona
 
-1. You give it a GitHub URL
-2. It clones the repo, splits the code into chunks, and generates vector embeddings
-3. When you ask a question, it finds the most relevant chunks and sends them to a local LLM
-4. The LLM answers based only on the actual code, always citing the source file
+1. Le das una URL de GitHub
+2. Clona el repositorio, divide el código en chunks y genera embeddings vectoriales
+3. Cuando haces una pregunta, encuentra los chunks más relevantes y los envía al LLM
+4. El LLM responde basándose únicamente en el código real, citando siempre el archivo fuente
 
-Everything runs locally — no cloud APIs required.
+Todo corre localmente — no se requieren APIs en la nube.
 
-## Quick start
+## Inicio rápido
 
-**Prerequisites:** Python 3.10+, [Ollama](https://ollama.com) installed and running.
+**Requisitos previos:** Python 3.10+, [Ollama](https://ollama.com) instalado y corriendo.
 
-Full setup instructions → [docs/installation.md](docs/installation.md)
+Instrucciones completas de configuración → [docs/installation.md](docs/installation.md)
 
 ```bash
-# 1. Clone and install
+# 1. Clonar e instalar
 git clone https://github.com/MedardoTejada/codebase-ai.git
 cd codebase-ai
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# 2. Configure
+# 2. Configurar
 cp .env.example .env
-# Edit .env and add your HF_TOKEN (see docs/installation.md)
+# Edita .env y agrega tu HF_TOKEN (ver docs/installation.md)
 
-# 3. Download the LLM (one-time, ~2 GB)
+# 3. Descargar el LLM (una sola vez, ~2 GB)
 ollama pull llama3.2
 
-# 4. Index a repo
+# 4. Indexar un repositorio
 python main.py index https://github.com/owner/repo
 
-# 5. Ask questions
-python main.py ask "what does this project do?"
-python main.py ask "how is authentication handled?"
-python main.py ask "where are database connections configured?"
+# 5. Hacer preguntas
+python main.py ask "¿qué hace este proyecto?"
+python main.py ask "¿cómo se maneja la autenticación?"
+python main.py ask "¿dónde se configuran las conexiones a la base de datos?"
 ```
 
-## Commands
+## Comandos
 
 ```
-python main.py index <github_url>    Clone and index a repository
-python main.py ask "<question>"      Ask a question about indexed repos
-python main.py list                  Show all indexed repositories
+python main.py index <github_url>    Clona e indexa un repositorio
+python main.py ask "<pregunta>"      Hace una pregunta sobre los repos indexados
+python main.py list                  Muestra todos los repositorios indexados
 ```
 
-## Configuration
+## Configuración
 
-All settings live in `config.py` and can be overridden via `.env`:
+Todos los parámetros viven en `config.py` y pueden sobreescribirse desde `.env`:
 
-| Variable | Default | Description |
+| Variable | Valor por defecto | Descripción |
 |---|---|---|
-| `HF_TOKEN` | *(empty)* | HuggingFace access token (avoids rate limits on model downloads) |
-| `GITHUB_TOKEN` | *(empty)* | GitHub PAT for private repositories |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server endpoint |
-| `OLLAMA_MODEL` | `llama3.2` | LLM model to use for answers |
+| `HF_TOKEN` | *(vacío)* | Token de acceso de HuggingFace (evita límites de velocidad en descargas) |
+| `GITHUB_TOKEN` | *(vacío)* | Personal Access Token de GitHub para repos privados |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Endpoint del servidor Ollama |
+| `OLLAMA_MODEL` | `llama3.2` | Modelo LLM a usar para las respuestas |
 
-## Supported file types
+## Tipos de archivo soportados
 
-| Category | Extensions |
+| Categoría | Extensiones |
 |---|---|
-| Code | `.py` `.java` `.js` `.ts` `.kt` `.feature` `.karate` |
-| Docs | `.md` `.txt` `.yaml` `.yml` `.json` |
+| Código | `.py` `.java` `.js` `.ts` `.kt` `.feature` `.karate` |
+| Documentación | `.md` `.txt` `.yaml` `.yml` `.json` |
 
-## Stack
+## Stack tecnológico
 
-| Component | Tool |
+| Componente | Herramienta |
 |---|---|
-| Orchestration | LangChain (LCEL) |
+| Orquestación | LangChain (LCEL) |
 | Embeddings | HuggingFace `all-MiniLM-L6-v2` (local, CPU) |
-| Vector store | ChromaDB (local, persistent) |
+| Vector store | ChromaDB (local, persistente) |
 | LLM | Ollama `llama3.2` (local) |
-| Repo cloning | GitPython |
+| Clonado de repos | GitPython |
 
-## Project structure
+## Estructura del proyecto
 
 ```
 codebase-ai/
-├── main.py              # CLI entry point (index / ask / list)
-├── config.py            # All configuration and defaults
+├── main.py              # Punto de entrada CLI (index / ask / list)
+├── config.py            # Toda la configuración y valores por defecto
 ├── indexer/
-│   ├── cloner.py        # Git clone with timeout + token injection
-│   ├── parser.py        # File traversal and text chunking
-│   └── embedder.py      # HuggingFace embeddings (cached)
+│   ├── cloner.py        # Clonado con timeout + inyección de token
+│   ├── parser.py        # Recorrido de archivos y chunking
+│   └── embedder.py      # Embeddings de HuggingFace (con caché)
 ├── store/
-│   └── vector_store.py  # ChromaDB read/write + repo metadata
+│   └── vector_store.py  # Lectura/escritura en ChromaDB + metadata de repos
 ├── agent/
-│   ├── retriever.py     # Similarity search + context formatting
-│   └── chain.py         # LangChain RAG chain (Ollama LLM)
+│   ├── retriever.py     # Similarity search + formateo del contexto
+│   └── chain.py         # RAG chain con LangChain y Ollama
 ├── data/
-│   ├── repos/           # Cloned repos (git-ignored)
-│   └── chroma/          # Persistent vector DB (git-ignored)
+│   ├── repos/           # Repos clonados (ignorados por git)
+│   └── chroma/          # Base de datos vectorial persistente (ignorada por git)
 ├── docs/
-│   ├── architecture.md  # System design and improvement ideas
-│   └── installation.md  # Step-by-step setup including accounts
+│   ├── architecture.md  # Diseño del sistema y posibles mejoras
+│   └── installation.md  # Configuración paso a paso incluyendo cuentas
 ├── .env.example
 ├── .gitignore
 └── requirements.txt
 ```
 
-## Docs
+## Documentación
 
-- [Installation guide](docs/installation.md) — accounts to create, tokens, dependencies, troubleshooting
-- [Architecture](docs/architecture.md) — system design, component breakdown, and improvement ideas
+- [Guía de instalación](docs/installation.md) — cuentas a crear, tokens, dependencias, solución de problemas
+- [Arquitectura](docs/architecture.md) — diseño del sistema, descripción de componentes y posibles mejoras
