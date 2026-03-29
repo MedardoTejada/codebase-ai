@@ -1,4 +1,4 @@
-# repo-guide
+# codebase-ai
 
 Agente RAG para onboarding de codebases. Clona e indexa cualquier repositorio de GitHub y permite hacer preguntas sobre él en lenguaje natural. Las respuestas citan el archivo fuente y el repositorio.
 

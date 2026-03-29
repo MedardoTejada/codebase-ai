@@ -2,7 +2,7 @@
 
 ## Visión general
 
-repo-guide es un agente RAG (Retrieval-Augmented Generation) que permite indexar cualquier repositorio de GitHub y hacer preguntas sobre él en lenguaje natural. El sistema clona el repositorio, divide el código en fragmentos, los convierte en vectores de embeddings, los almacena localmente, y usa un LLM para responder preguntas basadas en el contexto recuperado.
+codebase-ai es un agente RAG (Retrieval-Augmented Generation) que permite indexar cualquier repositorio de GitHub y hacer preguntas sobre él en lenguaje natural. El sistema clona el repositorio, divide el código en fragmentos, los convierte en vectores de embeddings, los almacena localmente, y usa un LLM para responder preguntas basadas en el contexto recuperado.
 
 ```
 GitHub URL

@@ -73,7 +73,7 @@ ollama list
 
 Deberías ver `llama3.2` en la lista.
 
-> Ollama debe estar corriendo (`ollama serve`) cada vez que uses repo-guide. En macOS, la app de escritorio lo inicia automáticamente.
+> Ollama debe estar corriendo (`ollama serve`) cada vez que uses codebase-ai. En macOS, la app de escritorio lo inicia automáticamente.
 
 ---
 
