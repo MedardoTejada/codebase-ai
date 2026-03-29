@@ -1,116 +1,108 @@
 # repo-guide
 
-RAG agent for codebase onboarding. Clone and index any GitHub repo, then ask questions in natural language. Answers cite the source file and repo.
+RAG agent for codebase onboarding. Clone and index any GitHub repository, then ask questions about it in natural language. Answers cite the source file and repo.
 
-## Stack
+## How it works
 
-- **LangChain** — orchestration
-- **ChromaDB** — local vector store (persistent)
-- **HuggingFace** `all-MiniLM-L6-v2` — embeddings (runs locally, no API key needed)
-- **Ollama** — local LLM inference
-- **GitPython** — repo cloning
+1. You give it a GitHub URL
+2. It clones the repo, splits the code into chunks, and generates vector embeddings
+3. When you ask a question, it finds the most relevant chunks and sends them to a local LLM
+4. The LLM answers based only on the actual code, always citing the source file
 
-## Prerequisites
+Everything runs locally — no cloud APIs required.
 
-1. **Python 3.10+**
-2. **Ollama** running locally with a model pulled:
-   ```bash
-   ollama pull llama3.2
-   ollama serve
-   ```
+## Quick start
 
-## Setup
+**Prerequisites:** Python 3.10+, [Ollama](https://ollama.com) installed and running.
+
+Full setup instructions → [docs/installation.md](docs/installation.md)
 
 ```bash
-git clone <this-repo>
-cd repo-guide
-
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-
+# 1. Clone and install
+git clone https://github.com/MedardoTejada/codebase-ai.git
+cd codebase-ai
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
+# 2. Configure
 cp .env.example .env
-# Edit .env if needed (GITHUB_TOKEN for private repos, custom OLLAMA_MODEL)
-```
+# Edit .env and add your HF_TOKEN (see docs/installation.md)
 
-## Usage
+# 3. Download the LLM (one-time, ~2 GB)
+ollama pull llama3.2
 
-### Index a repo
-
-```bash
+# 4. Index a repo
 python main.py index https://github.com/owner/repo
+
+# 5. Ask questions
+python main.py ask "what does this project do?"
+python main.py ask "how is authentication handled?"
+python main.py ask "where are database connections configured?"
 ```
 
-- Clones the repo (30 s timeout)
-- Parses all supported files and splits into chunks
-- Embeds with `all-MiniLM-L6-v2` and stores in ChromaDB
-- Re-indexing the same URL replaces all previous chunks (keeps it fresh)
-
-### Ask a question
-
-```bash
-python main.py ask "How is authentication handled?"
-python main.py ask "Where are database migrations defined?"
-python main.py ask "What does the UserService class do?"
-```
-
-Responses cite `[repo_name → file_path]` for every claim.
-
-### List indexed repos
-
-```bash
-python main.py list
-```
-
-Shows URL, file count, and timestamp for each indexed repo.
-
-## Supported file types
-
-| Category | Extensions |
-|----------|-----------|
-| Code | `.py` `.java` `.js` `.ts` `.kt` `.feature` `.karate` |
-| Docs | `.md` `.txt` `.yaml` `.yml` `.json` |
-
-## Private repos
-
-Add your GitHub personal access token to `.env`:
+## Commands
 
 ```
-GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+python main.py index <github_url>    Clone and index a repository
+python main.py ask "<question>"      Ask a question about indexed repos
+python main.py list                  Show all indexed repositories
 ```
-
-The token is injected into the HTTPS clone URL automatically.
 
 ## Configuration
 
 All settings live in `config.py` and can be overridden via `.env`:
 
 | Variable | Default | Description |
-|----------|---------|-------------|
-| `GITHUB_TOKEN` | *(empty)* | PAT for private repos |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
-| `OLLAMA_MODEL` | `llama3.2` | Model to use for answers |
+|---|---|---|
+| `HF_TOKEN` | *(empty)* | HuggingFace access token (avoids rate limits on model downloads) |
+| `GITHUB_TOKEN` | *(empty)* | GitHub PAT for private repositories |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server endpoint |
+| `OLLAMA_MODEL` | `llama3.2` | LLM model to use for answers |
+
+## Supported file types
+
+| Category | Extensions |
+|---|---|
+| Code | `.py` `.java` `.js` `.ts` `.kt` `.feature` `.karate` |
+| Docs | `.md` `.txt` `.yaml` `.yml` `.json` |
+
+## Stack
+
+| Component | Tool |
+|---|---|
+| Orchestration | LangChain (LCEL) |
+| Embeddings | HuggingFace `all-MiniLM-L6-v2` (local, CPU) |
+| Vector store | ChromaDB (local, persistent) |
+| LLM | Ollama `llama3.2` (local) |
+| Repo cloning | GitPython |
 
 ## Project structure
 
 ```
-repo-guide/
-├── config.py            # All configuration
-├── main.py              # CLI entry point
+codebase-ai/
+├── main.py              # CLI entry point (index / ask / list)
+├── config.py            # All configuration and defaults
 ├── indexer/
-│   ├── cloner.py        # Git clone with timeout
-│   ├── parser.py        # File traversal + chunking
+│   ├── cloner.py        # Git clone with timeout + token injection
+│   ├── parser.py        # File traversal and text chunking
 │   └── embedder.py      # HuggingFace embeddings (cached)
 ├── store/
-│   └── vector_store.py  # ChromaDB read/write operations
+│   └── vector_store.py  # ChromaDB read/write + repo metadata
 ├── agent/
 │   ├── retriever.py     # Similarity search + context formatting
-│   └── chain.py         # LangChain RAG chain (Ollama)
+│   └── chain.py         # LangChain RAG chain (Ollama LLM)
 ├── data/
 │   ├── repos/           # Cloned repos (git-ignored)
 │   └── chroma/          # Persistent vector DB (git-ignored)
+├── docs/
+│   ├── architecture.md  # System design and improvement ideas
+│   └── installation.md  # Step-by-step setup including accounts
 ├── .env.example
 ├── .gitignore
 └── requirements.txt
 ```
+
+## Docs
+
+- [Installation guide](docs/installation.md) — accounts to create, tokens, dependencies, troubleshooting
+- [Architecture](docs/architecture.md) — system design, component breakdown, and improvement ideas
