@@ -11,6 +11,26 @@ Agente RAG para onboarding de codebases. Clona e indexa cualquier repositorio de
 
 Todo corre localmente — no se requieren APIs en la nube.
 
+## Arquitectura
+
+```mermaid
+flowchart TD
+    subgraph INDEX["⚙️  Indexado  (python main.py index)"]
+        A([GitHub URL]) --> B["🔽 Cloner\ngit clone"]
+        B --> C["📄 Parser\nLangChain TextSplitter\nchunks de 1000 chars"]
+        C --> D["🧠 Embedder\nHuggingFace\nall-MiniLM-L6-v2"]
+        D --> E[("💾 ChromaDB\nvector store local")]
+    end
+
+    subgraph ASK["💬  Consulta  (python main.py ask)"]
+        F([Pregunta]) --> G["🔍 Retriever\nsimilarity search\ntop-k chunks"]
+        G --> E
+        G --> H["📝 Prompt\nLangChain LCEL\ncontexto + pregunta"]
+        H --> I["🦙 LLM\nOllama · llama3.2"]
+        I --> J([Respuesta con citas])
+    end
+```
+
 ## Quick Start
 
 **Requisitos previos:** Python 3.10+, [Ollama](https://ollama.com) instalado.
