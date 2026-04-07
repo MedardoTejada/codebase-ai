@@ -2,34 +2,7 @@
 
 Agente RAG para onboarding de codebases. Clona e indexa cualquier repositorio de GitHub y permite hacer preguntas sobre él en lenguaje natural. Las respuestas citan el archivo fuente y el repositorio.
 
-## Cómo funciona
-
-1. Le das una URL de GitHub
-2. Clona el repositorio, divide el código en chunks y genera embeddings vectoriales
-3. Cuando haces una pregunta, encuentra los chunks más relevantes y los envía al LLM
-4. El LLM responde basándose únicamente en el código real, citando siempre el archivo fuente
-
 Todo corre localmente — no se requieren APIs en la nube.
-
-## Arquitectura
-
-```mermaid
-flowchart TD
-    subgraph INDEX["⚙️  Indexado  (python main.py index)"]
-        A([GitHub URL]) --> B["🔽 Cloner\ngit clone"]
-        B --> C["📄 Parser\nLangChain TextSplitter\nchunks de 1000 chars"]
-        C --> D["🧠 Embedder\nHuggingFace\nall-MiniLM-L6-v2"]
-        D --> E[("💾 ChromaDB\nvector store local")]
-    end
-
-    subgraph ASK["💬  Consulta  (python main.py ask)"]
-        F([Pregunta]) --> G["🔍 Retriever\nsimilarity search\ntop-k chunks"]
-        G --> E
-        G --> H["📝 Prompt\nLangChain LCEL\ncontexto + pregunta"]
-        H --> I["🦙 LLM\nOllama · llama3.2"]
-        I --> J([Respuesta con citas])
-    end
-```
 
 ## Quick Start
 
@@ -56,6 +29,66 @@ python main.py ask "¿dónde se configuran las conexiones a la base de datos?"
 
 Instrucciones detalladas → [docs/installation.md](docs/installation.md)
 
+## Arquitectura
+
+### Componentes del sistema
+
+```mermaid
+graph TB
+    CLI["🖥️ CLI\nmain.py"]
+
+    subgraph INDEXER["Indexer"]
+        CL["Cloner\ngit clone"]
+        PA["Parser\nLangChain TextSplitter"]
+        EM["Embedder\nHuggingFace all-MiniLM-L6-v2"]
+    end
+
+    subgraph AGENT["Agent"]
+        RE["Retriever\nsimilarity search"]
+        CH["Chain\nLangChain LCEL"]
+    end
+
+    DB[("ChromaDB\nvector store")]
+    LLM["🦙 Ollama\nllama3.2"]
+
+    CLI --> CL
+    CL --> PA
+    PA --> EM
+    EM --> DB
+
+    CLI --> RE
+    RE --> DB
+    RE --> CH
+    CH --> LLM
+```
+
+### Flujo de operaciones
+
+```mermaid
+flowchart TD
+    subgraph INDEX["⚙️  Indexado  (python main.py index)"]
+        A([GitHub URL]) --> B["🔽 Cloner\ngit clone"]
+        B --> C["📄 Parser\nLangChain TextSplitter\nchunks de 1000 chars"]
+        C --> D["🧠 Embedder\nHuggingFace\nall-MiniLM-L6-v2"]
+        D --> E[("💾 ChromaDB\nvector store local")]
+    end
+
+    subgraph ASK["💬  Consulta  (python main.py ask)"]
+        F([Pregunta]) --> G["🔍 Retriever\nsimilarity search\ntop-k chunks"]
+        G --> E
+        G --> H["📝 Prompt\nLangChain LCEL\ncontexto + pregunta"]
+        H --> I["🦙 LLM\nOllama · llama3.2"]
+        I --> J([Respuesta con citas])
+    end
+```
+
+## Cómo funciona
+
+1. Le das una URL de GitHub
+2. Clona el repositorio, divide el código en chunks y genera embeddings vectoriales
+3. Cuando haces una pregunta, encuentra los chunks más relevantes y los envía al LLM
+4. El LLM responde basándose únicamente en el código real, citando siempre el archivo fuente
+
 ## Comandos
 
 ```
@@ -70,7 +103,6 @@ Todos los parámetros viven en `config.py` y pueden sobreescribirse desde `.env`
 
 | Variable | Valor por defecto | Descripción |
 |---|---|---|
-| `HF_TOKEN` | *(vacío)* | Token de acceso de HuggingFace (evita límites de velocidad en descargas) |
 | `GITHUB_TOKEN` | *(vacío)* | Personal Access Token de GitHub para repos privados |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Endpoint del servidor Ollama |
 | `OLLAMA_MODEL` | `llama3.2` | Modelo LLM a usar para las respuestas |
