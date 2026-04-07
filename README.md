@@ -11,34 +11,30 @@ Agente RAG para onboarding de codebases. Clona e indexa cualquier repositorio de
 
 Todo corre localmente — no se requieren APIs en la nube.
 
-## Inicio rápido
+## Quick Start
 
-**Requisitos previos:** Python 3.10+, [Ollama](https://ollama.com) instalado y corriendo.
-
-Instrucciones completas de configuración → [docs/installation.md](docs/installation.md)
+**Requisitos previos:** Python 3.10+, [Ollama](https://ollama.com) instalado.
 
 ```bash
-# 1. Clonar e instalar
 git clone https://github.com/MedardoTejada/codebase-ai.git
 cd codebase-ai
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+./setup.sh
+```
 
-# 2. Configurar
-cp .env.example .env
-# Edita .env y agrega tu HF_TOKEN (ver docs/installation.md)
+El script instala las dependencias, descarga el modelo LLM y prepara el entorno automáticamente.
 
-# 3. Descargar el LLM (una sola vez, ~2 GB)
-ollama pull llama3.2
-
-# 4. Indexar un repositorio
+```bash
+# Activar el entorno e indexar un repositorio
+source .venv/bin/activate
 python main.py index https://github.com/owner/repo
 
-# 5. Hacer preguntas
+# Hacer preguntas
 python main.py ask "¿qué hace este proyecto?"
 python main.py ask "¿cómo se maneja la autenticación?"
 python main.py ask "¿dónde se configuran las conexiones a la base de datos?"
 ```
+
+Instrucciones detalladas → [docs/installation.md](docs/installation.md)
 
 ## Comandos
 
